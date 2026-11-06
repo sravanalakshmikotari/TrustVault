@@ -162,3 +162,31 @@
 
 AI assistance was used during development for implementation guidance, debugging, and security improvements. The generated code was reviewed and tested manually during development.
 
+
+
+\## 6 November 2026 - Search, Delete and Automated Testing
+
+
+
+\*\*Prompt:\*\* Add document search and owner-only document deletion. Verify security using automated tests.
+
+
+
+\*\*AI Output:\*\* Added document search filters for name, category, owner and date. Added an owner-only delete route with audit logging. Created pytest access-control tests.
+
+
+
+\*\*Flaw identified:\*\* Search and delete needed server-side authorization checks to prevent unauthorized access.
+
+
+
+\*\*Fix:\*\* Search results are restricted to documents owned by or shared with the logged-in user. Delete is restricted to the document owner.
+
+
+
+\*\*Test Result:\*\* 6 automated tests passed.
+
+
+
+\*\*Commit:\*\* https://github.com/sravanalakshmikotari/TrustVault/commit/286029a
+

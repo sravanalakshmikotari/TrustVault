@@ -152,3 +152,49 @@ This document describes possible security threats, implemented protections, and 
 
 \*\*Risk:\*\* Important document activities may not be recorded
 
+
+
+\## Automated Security Testing - 6 November 2026
+
+
+
+Automated tests are implemented using pytest.
+
+
+
+Test results:
+
+\- 6 tests passed.
+
+\- Unauthorized users cannot download unshared documents.
+
+\- Owners can download their documents.
+
+\- Non-owners cannot grant or revoke permissions.
+
+\- Revoked users cannot download documents.
+
+\- Non-admin users cannot access the admin page.
+
+
+
+Test command:
+
+python -m pytest -q
+
+
+
+Latest test commit:
+
+https://github.com/sravanalakshmikotari/TrustVault/commit/286029a
+
+
+
+Limitations:
+
+\- Deployment hardening is still pending.
+
+\- Malware scanning and rate limiting are not implemented.
+
+\- Edit functionality for shared documents is not yet implemented.s
+
