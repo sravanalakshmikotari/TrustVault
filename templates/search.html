@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TrustVault - Search Documents</title>
+</head>
+<body>
+    <h1>Search Documents</h1>
+
+    <form method="GET" action="{{ url_for('search_documents') }}">
+        <input type="text" name="name" placeholder="Document name" value="{{ keyword }}">
+
+        <input type="text" name="category" placeholder="Category" value="{{ category }}">
+
+        <input type="text" name="owner" placeholder="Owner email" value="{{ owner_email }}">
+
+        <label>Upload Date:</label>
+        <input type="date" name="date" value="{{ date }}">
+
+        <button type="submit">Search</button>
+    </form>
+
+    <h2>Search Results</h2>
+
+    {% if documents %}
+        {% for doc in documents %}
+            <div>
+                <h3>{{ doc.filename }}</h3>
+                <p>Category: {{ doc.category or "General" }}</p>
+                <a href="{{ url_for('download', document_id=doc.id) }}">Download</a>
+            </div>
+            <hr>
+        {% endfor %}
+    {% else %}
+        <p>No documents found.</p>
+    {% endif %}
+
+    <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+</body>
+</html>

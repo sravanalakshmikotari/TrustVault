@@ -24,8 +24,15 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get(
     "SECRET_KEY", "dev-only-change-before-deployment"
 )
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///trustvault.db"
-app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "uploads")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", "sqlite:///trustvault.db"
+)
+
+app.config["UPLOAD_FOLDER"] = os.environ.get(
+    "UPLOAD_FOLDER", os.path.join(app.root_path, "uploads")
+)
+
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -33,7 +40,7 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "txt", "docx"}
 
 db.init_app(app)
-CSRFProtect(app)
+csrf = CSRFProtect(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -141,6 +148,58 @@ def dashboard():
         documents=documents,
         shared_documents=shared_documents,
         shared_permissions=shared_permissions
+    )
+
+
+@app.route("/search")
+@login_required
+def search_documents():
+    keyword = request.args.get("name", "").strip()
+    category = request.args.get("category", "").strip()
+    owner_email = request.args.get("owner", "").strip().lower()
+    date = request.args.get("date", "").strip()
+
+    query = Document.query.join(
+        User, Document.owner_id == User.id
+    ).filter(
+        (Document.owner_id == current_user.id) |
+        (Document.id.in_(
+            db.session.query(DocumentPermission.document_id).filter(
+                DocumentPermission.user_id == current_user.id,
+                (DocumentPermission.can_read == True) |
+                (DocumentPermission.can_edit == True)
+            )
+        ))
+    )
+
+    if keyword:
+        query = query.filter(Document.filename.ilike(f"%{keyword}%"))
+
+    if category:
+        query = query.filter(Document.category.ilike(f"%{category}%"))
+
+    if owner_email:
+        query = query.filter(User.email.ilike(f"%{owner_email}%"))
+
+    if date:
+        try:
+            from datetime import datetime
+            selected_date = datetime.strptime(date, "%Y-%m-%d").date()
+            query = query.filter(
+                db.func.date(Document.created_at) == selected_date
+            )
+        except ValueError:
+            flash("Invalid date format.")
+
+    documents = query.order_by(Document.created_at.desc()).all()
+
+    return render_template(
+        "search.html",
+        documents=documents,
+        keyword=keyword,
+        category=category,
+        owner_email=owner_email,
+        date=date
     )
 
 
@@ -328,13 +387,41 @@ def revoke_access(document_id, user_id):
     return redirect(url_for("dashboard"))
 
 
+@app.route("/delete/<int:document_id>", methods=["POST"])
+@login_required
+def delete_document(document_id):
+    document = db.session.get(Document, document_id)
+
+    if not document or document.owner_id != current_user.id:
+        abort(403)
+
+    file_path = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        document.stored_name
+    )
+
+    db.session.add(AuditLog(
+        user_id=current_user.id,
+        document_id=document.id,
+        action="DELETE",
+        details="Document deleted successfully"
+    ))
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    db.session.delete(document)
+    db.session.commit()
+
+    flash("Document deleted successfully.")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/admin")
 @login_required
 def admin_dashboard():
-    print("ADMIN CHECK:", current_user.email, current_user.role)
-
     if current_user.role != "admin":
-        return "Admin access denied. Current role: " + str(current_user.role), 403
+        abort(403)
 
     logs = AuditLog.query.order_by(
         AuditLog.created_at.desc()
