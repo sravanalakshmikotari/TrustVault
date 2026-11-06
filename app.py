@@ -1,8 +1,6 @@
 
 import os
 import uuid
-import smtplib
-from email.message import EmailMessage
 
 from flask import (
     Flask, render_template, request, redirect,
@@ -16,7 +14,6 @@ from flask_login import (
 
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 from models import db, User
 from document_model import Document, DocumentPermission, AuditLog
@@ -65,54 +62,6 @@ def allowed_file(filename):
         "." in filename
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
-
-
-def create_reset_token(email):
-    serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
-    return serializer.dumps(email, salt="password-reset")
-
-
-def verify_reset_token(token):
-    serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
-    try:
-        return serializer.loads(
-            token,
-            salt="password-reset",
-            max_age=1800
-        )
-    except (SignatureExpired, BadSignature):
-        return None
-
-
-def send_reset_email(user, token):
-    mail_server = os.environ["MAIL_SERVER"]
-    mail_port = int(os.environ.get("MAIL_PORT", 587))
-    mail_username = os.environ["MAIL_USERNAME"]
-    mail_password = os.environ["MAIL_PASSWORD"]
-
-    reset_url = url_for(
-        "reset_password",
-        token=token,
-        _external=True
-    )
-
-    message = EmailMessage()
-    message["Subject"] = "TrustVault Password Reset"
-    message["From"] = mail_username
-    message["To"] = user.email
-
-    message.set_content(
-        f"Hello {user.name},\n\n"
-        f"Use this link to reset your TrustVault password:\n"
-        f"{reset_url}\n\n"
-        "This link expires in 30 minutes.\n"
-        "If you did not request this, ignore this email."
-    )
-
-    with smtplib.SMTP(mail_server, mail_port) as server:
-        server.starttls()
-        server.login(mail_username, mail_password)
-        server.send_message(message)
 
 
 @app.route("/")
@@ -169,52 +118,13 @@ def login():
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        user = User.query.filter_by(email=email).first()
-
-        if user:
-            token = create_reset_token(user.email)
-            try:
-                send_reset_email(user, token)
-            except Exception:
-                app.logger.exception("Password reset email failed")
-
-        flash("If the account exists, a password reset email has been sent.")
+        flash(
+            "Password reset by email is currently unavailable. "
+            "Please contact the administrator."
+        )
         return redirect(url_for("login"))
 
     return render_template("forgot_password.html")
-
-
-@app.route("/reset-password/<token>", methods=["GET", "POST"])
-def reset_password(token):
-    email = verify_reset_token(token)
-
-    if not email:
-        flash("Reset link is invalid or expired.")
-        return redirect(url_for("forgot_password"))
-
-    user = User.query.filter_by(email=email).first()
-
-    if not user:
-        flash("Account not found.")
-        return redirect(url_for("forgot_password"))
-
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        confirm_password = request.form.get("confirm_password", "")
-
-        if len(password) < 12:
-            flash("Password must be at least 12 characters.")
-        elif password != confirm_password:
-            flash("Passwords do not match.")
-        else:
-            user.set_password(password)
-            db.session.commit()
-
-            flash("Password reset successful. Please login.")
-            return redirect(url_for("login"))
-
-    return render_template("reset_password.html")
 
 
 @app.route("/dashboard")
