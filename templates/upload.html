@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Document</title>
+</head>
+<body>
+    <h1>TrustVault - Upload Document</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label>Select Document:</label>
+        <input type="file" name="file" required>
+        <br><br>
+
+        <label>Category:</label>
+        <input type="text" name="category">
+        <br><br>
+
+        <button type="submit">Upload</button>
+    </form>
+
+    <a href="/dashboard">Back to Dashboard</a>
+</body>
+</html>

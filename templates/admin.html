@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TrustVault Admin</title>
+</head>
+<body>
+    <h1>TrustVault Admin Dashboard</h1>
+    <h2>Activity Logs</h2>
+
+    {% if activities %}
+        <table border="1" cellpadding="8">
+            <tr>
+                <th>User</th>
+                <th>Document ID</th>
+                <th>Action</th>
+                <th>Details</th>
+                <th>Date & Time</th>
+            </tr>
+
+            {% for log, user in activities %}
+                <tr>
+                    <td>{{ user.email if user else "Unknown user" }}</td>
+                    <td>{{ log.document_id or "-" }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>{{ log.details or "-" }}</td>
+                    <td>{{ log.created_at }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No activity recorded yet.</p>
+    {% endif %}
+
+    <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+</body>
+</html>
